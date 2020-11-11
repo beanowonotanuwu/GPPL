@@ -1,5 +1,6 @@
 ### IMPORTS                                     ###
 from enum import Enum
+from pdb import set_trace
 from typing import  (
     AnyStr,
     Any
@@ -19,8 +20,10 @@ class Token(object):
         EOF = -1
         NEWLINE = 0
         NUMBER = 1
-        IDENT = 2
-        STRING = 3
+        STRING = 2
+        CHAR = 3
+        BOOLEAN = 4
+        IDENT = 5
         ## Keywords                                 ##
         prt = 101
         inp = 102
@@ -50,6 +53,12 @@ class Token(object):
     def matches(cls, token_a, token_b): """
     Classmethod to see if the provided token matches the desired token
     """; return (token_a.tt == token_b.tt) and (token_a.val == token_b.val)
+    
+    @staticmethod
+    def check_keyword(val):
+        for tt in Token.TT:
+            if (tt.name == val) and (200 > tt.value >= 100): return tt
+        return None
 ### TOKENU                                      ###
 ### LEXER                                       ###
 class Lexer(object):
@@ -72,16 +81,18 @@ class Lexer(object):
     )
     def skip_whitespace(self) -> None:
         while self.char in (' ', '\t' '\r'): self.next()
-    def skip_comment(self): pass
+    def skip_comment(self):
+        if self.char == '#':
+            while self.char != '\n': self.next()
     def mk(self, tt: Token) -> Token: """
     For making tokens
     """; return Token(tt.name, self.char)
     ## Utility                                      ##    
     @property
     def token(self) -> Token:
-        token = None
         self.skip_whitespace()
         self.skip_comment()
+        token = None
 
         if self.char    == '+' : token = self.mk(Token.TT.PLUS)
         elif self.char  == '-' : token = self.mk(Token.TT.MINUS)
@@ -96,9 +107,59 @@ class Lexer(object):
             if self.peek() == '=':
                 last = self.char
                 self.next()
-                token = Token(last + self.char, Token.TT.BEQ)
-            else: token = Token(self.char, Token.TT.EQ)
-        elif self.char  == '\n': token = self.mk(Token.TT.NEWLINE)
+                token = Token(Token.TT.BEQ, last + self.char)
+            else: token = self.mk(Token.TT.EQ)
+        elif self.char  == '>' :
+            if self.peek() == '=':
+                last = self.char
+                self.next()
+                token = Token(Token.TT.GTE, last + self.char)
+            else: token = self.mk(Token.TT.GT)
+        elif self.char  == '<' :
+            if self.peek() == '=':
+                last = self.char
+                self.next()
+                token = Token(Token.TT.LTE, last + self.char)
+            else: token = self.mk(Token.TT.LT)
+        elif self.char  == '!' :
+            if self.peek() == '=':
+                last = self.char
+                self.next()
+                token = Token(Token.TT.NOTBEQ, last + self.char)
+            else: self.abort(f"InvalidTokenError: {self.char}")
+        elif self.char  == '"' :
+            self.next()
+            start = self.pos
+
+            while self.char != '"':
+                if self.char in ('\r', '\n', '\t', '\\', '%'):
+                    self.abort(f"StringError: {self.char} is an illegal character inside a string")
+                self.next()
+            #set_trace()
+            val = self.src[start : self.pos]
+            token = Token(Token.TT.STRING, val)
+        elif self.char.isdigit():
+            start = self.pos
+            while self.peek().isdigit(): self.next()
+            if self.peek() == '.':
+                self.next()
+
+                if not self.peek().isdigit():
+                    self.abort(
+                        f"IllegalCharacterError: {self.char}"
+                    )
+                while self.peek().isdigit(): self.next()
+
+            val = self.src[start : self.pos + 1]
+            token = Token(Token.TT.NUMBER, val)
+        elif self.char.isalpha():
+            start = self.pos
+            while self.peek().isalnum(): self.next()
+
+            val = self.src[start : self.pos + 1]
+            kw = Token.check_keyword(val)
+            token = Token(Token.TT.IDENT if kw == None else kw, val)
+        elif self.char  == '\n': token = Token(Token.TT.NEWLINE)
         elif self.char  == '\0': token = Token(Token.TT.EOF)
         else: self.abort(f'UnknownTokenError: {self.char}')
 
