@@ -5,46 +5,44 @@ from typing import  (
     AnyStr,
     Any
 )
-
+from easyyaml import load
+from lang.util import cd_back
 from sys import exit as exit_
 ### IMPORTS                                     ###
+### LOADINGS                                    ###
+# set_trace()
+with cd_back(r'lang\info') as _:
+    keywords = load(r'kws.enum.yml')
+### LOADINGS                                    ###
 ### TOKENU                                      ###
 class Token(object):
-    """
-    Token class for Token Types (Token.TT) and creating Token objects
-    """
-    class TT(Enum):
-        """
-        Token Type class containing sub classes (enums to be more percise)
-        """
-        EOF = -1
-        NEWLINE = 0
-        NUMBER = 1
-        STRING = 2
-        CHAR = 3
-        BOOLEAN = 4
-        IDENT = 5
-        ## Keywords                                 ##
-        prt = 101
-        inp = 102
-        ## Keywords                                 ##
-        ## Operators                                ##
-        EQ = 201  
-        PLUS = 202
-        MINUS = 203
-        MUL = 204
-        DIV = 205
-        INT_DIV = 206
-        POW = 207
-        MOD = 208
-        ROOT = 209
-        BEQ = 210
-        NOTBEQ = 211
-        LT = 212
-        LTE = 213
-        GT = 214
-        GTE = 215
-        ## Operators                                ##
+    EOF = -1
+    NEWLINE = 0
+    NUMBER = 1
+    STRING = 2
+    CHAR = 3
+    BOOLEAN = 4
+    IDENT = 5
+    ## Keywords                                 ##
+    KEYWORDS = [v for v in keywords.values()]
+    ## Keywords                                 ##
+    ## Operators                                ##
+    EQ = 201  
+    PLUS = 202
+    MINUS = 203
+    MUL = 204
+    DIV = 205
+    INT_DIV = 206
+    POW = 207
+    MOD = 208
+    ROOT = 209
+    BEQ = 210
+    NOTBEQ = 211
+    LT = 212
+    LTE = 213
+    GT = 214
+    GTE = 215
+    ## Operators                                ##
 
     def __init__(self, tt, val: AnyStr or None=None): self.tt, self.val = tt, val
     def __repr__(self): return f'{self.tt}' + (f':{self.val}' if self.val else '')
@@ -56,8 +54,8 @@ class Token(object):
     
     @staticmethod
     def check_keyword(val):
-        for tt in Token.TT:
-            if (tt.name == val) and (200 > tt.value >= 100): return tt
+        for tt in Token.KEYWORDS:
+            if val == tt: return tt
         return None
 ### TOKENU                                      ###
 ### LEXER                                       ###
@@ -86,7 +84,7 @@ class Lexer(object):
             while self.char != '\n': self.next()
     def mk(self, tt: Token) -> Token: """
     For making tokens
-    """; return Token(tt.name, self.char)
+    """; return Token(name, self.char)
     ## Utility                                      ##    
     @property
     def token(self) -> Token:
@@ -94,38 +92,38 @@ class Lexer(object):
         self.skip_comment()
         token = None
 
-        if self.char    == '+' : token = self.mk(Token.TT.PLUS)
-        elif self.char  == '-' : token = self.mk(Token.TT.MINUS)
-        elif self.char  == '*' : token = self.mk(Token.TT.MUL)
+        if self.char    == '+' : token = self.mk(Token.PLUS)
+        elif self.char  == '-' : token = self.mk(Token.MINUS)
+        elif self.char  == '*' : token = self.mk(Token.MUL)
         elif self.char  == '/' :
             # check for int div
-            token = self.mk(Token.TT.DIV)
-        elif self.char  == '^' : token = self.mk(Token.TT.POW)
-        elif self.char  == '%' : token = self.mk(Token.TT.MOD)
-        elif self.char  == '~' : token = self.mk(Token.TT.ROOT)
+            token = self.mk(Token.DIV)
+        elif self.char  == '^' : token = self.mk(Token.POW)
+        elif self.char  == '%' : token = self.mk(Token.MOD)
+        elif self.char  == '~' : token = self.mk(Token.ROOT)
         elif self.char  == '=' :
             if self.peek() == '=':
                 last = self.char
                 self.next()
-                token = Token(Token.TT.BEQ, last + self.char)
-            else: token = self.mk(Token.TT.EQ)
+                token = Token(Token.BEQ, last + self.char)
+            else: token = self.mk(Token.EQ)
         elif self.char  == '>' :
             if self.peek() == '=':
                 last = self.char
                 self.next()
-                token = Token(Token.TT.GTE, last + self.char)
-            else: token = self.mk(Token.TT.GT)
+                token = Token(Token.GTE, last + self.char)
+            else: token = self.mk(Token.GT)
         elif self.char  == '<' :
             if self.peek() == '=':
                 last = self.char
                 self.next()
-                token = Token(Token.TT.LTE, last + self.char)
-            else: token = self.mk(Token.TT.LT)
+                token = Token(Token.LTE, last + self.char)
+            else: token = self.mk(Token.LT)
         elif self.char  == '!' :
             if self.peek() == '=':
                 last = self.char
                 self.next()
-                token = Token(Token.TT.NOTBEQ, last + self.char)
+                token = Token(Token.NOTBEQ, last + self.char)
             else: self.abort(f"InvalidTokenError: {self.char}")
         elif self.char  == '"' :
             self.next()
@@ -137,7 +135,7 @@ class Lexer(object):
                 self.next()
             #set_trace()
             val = self.src[start : self.pos]
-            token = Token(Token.TT.STRING, val)
+            token = Token(Token.STRING, val)
         elif self.char.isdigit():
             start = self.pos
             while self.peek().isdigit(): self.next()
@@ -151,16 +149,16 @@ class Lexer(object):
                 while self.peek().isdigit(): self.next()
 
             val = self.src[start : self.pos + 1]
-            token = Token(Token.TT.NUMBER, val)
+            token = Token(Token.NUMBER, val)
         elif self.char.isalpha():
             start = self.pos
             while self.peek().isalnum(): self.next()
 
             val = self.src[start : self.pos + 1]
             kw = Token.check_keyword(val)
-            token = Token(Token.TT.IDENT if kw == None else kw, val)
-        elif self.char  == '\n': token = Token(Token.TT.NEWLINE)
-        elif self.char  == '\0': token = Token(Token.TT.EOF)
+            token = Token(Token.IDENT if kw == None else kw, val)
+        elif self.char  == '\n': token = Token(Token.NEWLINE)
+        elif self.char  == '\0': token = Token(Token.EOF)
         else: self.abort(f'UnknownTokenError: {self.char}')
 
         self.next()

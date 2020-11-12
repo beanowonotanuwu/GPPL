@@ -1,0 +1,29 @@
+### MISC                    ###
+print       : prt
+input       : inp
+alias       : as
+in          : in # contains, for in
+import      : import  # import
+pause       : pause # time.sleep()
+throw       : throw # raise, gen.throw()
+send        : send  # continue, gen.send()
+stop        : stop  # break, gen.stop()
+return      : return
+yield       : yield
+### MISC                    ###
+### CONTROL FLOW            ###
+if          : if
+unless      : unless
+elif        : ef
+else        : else
+try         : try
+catch       : catch
+finally     : finally
+assert      : asrt
+### CONTROL FLOW            ###
+### LOOPS                   ###
+for         : for # for (var, cond)
+while       : while
+until       : until
+repeat      : repeat
+### LOOPS                   ###

@@ -6,6 +6,6 @@ if __name__ == "__main__":
         src = input('>>> ')
         lexer = lang.lang.Lexer(src)
         tok = lexer.token
-        while tok.tt != lang.lang.Token.TT.EOF:
+        while tok.tt != lang.lang.Token.EOF:
             print(tok)
             tok = lexer.token
