@@ -5,10 +5,13 @@ from typing import  (
     AnyStr,
     Any
 )
+from warnings import filterwarnings
 from easyyaml import load
+from yaml import YAMLLoadWarning
 from lang.util import cd_back
 from sys import exit as exit_
 ### IMPORTS                                     ###
+filterwarnings("ignore", category=YAMLLoadWarning)
 ### LOADINGS                                    ###
 # set_trace()
 with cd_back(r'lang\info') as _:
@@ -16,32 +19,32 @@ with cd_back(r'lang\info') as _:
 ### LOADINGS                                    ###
 ### TOKENU                                      ###
 class Token(object):
-    EOF = -1
-    NEWLINE = 0
-    NUMBER = 1
-    STRING = 2
-    CHAR = 3
-    BOOLEAN = 4
-    IDENT = 5
+    EOF = 'EOF'
+    NEWLINE = 'NEWLINE'
+    NUMBER = 'NUMBER'
+    STRING = 'STRING'
+    CHAR = 'CHAR'
+    BOOLEAN = 'BOOLEAN'
+    IDENT = 'IDENT'
     ## Keywords                                 ##
     KEYWORDS = [v for v in keywords.values()]
     ## Keywords                                 ##
     ## Operators                                ##
-    EQ = 201  
-    PLUS = 202
-    MINUS = 203
-    MUL = 204
-    DIV = 205
-    INT_DIV = 206
-    POW = 207
-    MOD = 208
-    ROOT = 209
-    BEQ = 210
-    NOTBEQ = 211
-    LT = 212
-    LTE = 213
-    GT = 214
-    GTE = 215
+    EQ = 'EQ'
+    PLUS = 'PLUS'
+    MINUS = 'MINUS'
+    MUL = 'MUL'
+    DIV = 'DIV'
+    INT_DIV = 'INT_DIV'
+    POW = 'POW'
+    MOD = 'MOD'
+    ROOT = 'ROOT'
+    BEQ = 'BEQ'
+    NOTBEQ = 'NOTBEQ'
+    LT = 'LT'
+    LTE = 'LTE'
+    GT = 'GT'
+    GTE = 'GTE'
     ## Operators                                ##
 
     def __init__(self, tt, val: AnyStr or None=None): self.tt, self.val = tt, val
@@ -84,7 +87,7 @@ class Lexer(object):
             while self.char != '\n': self.next()
     def mk(self, tt: Token) -> Token: """
     For making tokens
-    """; return Token(name, self.char)
+    """; return Token(tt, self.char)
     ## Utility                                      ##    
     @property
     def token(self) -> Token:
@@ -164,3 +167,49 @@ class Lexer(object):
         self.next()
         return token
 ### LEXER                                       ###
+### PARSER                                      ###
+class Parser(object):
+    def __init__(self, lexer: Lexer):
+        self.lexer = lexer
+
+        self.ctok = None
+        self.ptok = None
+        self.next()
+        self.next()
+    def check_token(self, tt): """
+    Return true if the current token matches
+    """; return tt == self.ctok.tt
+    def check_peek(self, tt): """
+    Return true if the next token matches
+    """; return tt == self.ptok.tt
+    def match(self, tt):
+        """ Try to match current token. If not, error. Advances the current token """
+        if not self.check_token(tt): self.abort(
+            f"Expected {tt}, got {self.ctok.tt}"
+        )
+        self.next()
+    def next(self):
+        """Advances the current token"""
+        self.ctok = self.ptok
+        self.ptok = self.lexer.token
+    def abort(self, message): exit_(f"ParsingError -> {message}")
+    
+    def program(self):
+        print("PROGRAM")
+
+        while not self.check_token(Token.EOF): self.statement()
+    def statement(self):
+        if self.check_token(keywords['print']):
+            print("STATEMENT-PRINT")
+            self.next()
+
+            if self.check_token(Token.STRING): self.next()
+            else: self.expression()
+        
+        self.nl()
+
+    def nl(self):
+        print("NEWLINE")
+        self.match(Token.NEWLINE)
+        while self.check_token(Token.NEWLINE): self.next()
+### PARSER                                      ###
