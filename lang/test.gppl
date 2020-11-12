@@ -1,3 +1,13 @@
-prt "hello, world!"
-prt "second line"
-prt "and a third..."
+prt "How many fibonacci numbers do you want?"
+inp nums
+prt ""
+
+let a = 0
+let b = 1
+while nums > 0 (
+    prt a
+    let c = a + b
+    let a = b
+    let b = c
+    let nums = nums - 1
+)

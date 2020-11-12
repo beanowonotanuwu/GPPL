@@ -2,6 +2,7 @@
 print       : prt
 input       : inp
 alias       : as
+let         : let
 in          : in # contains, for in
 import      : import  # import
 pause       : pause # time.sleep()

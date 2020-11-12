@@ -29,6 +29,10 @@ class Token(object):
     ## Keywords                                 ##
     KEYWORDS = [v for v in keywords.values()]
     ## Keywords                                 ##
+    ## Symbols                                  ##
+    LPAREN = 'LPAREN'
+    RPAREN = 'RPAREN'
+    ## Symbols                                  ##
     ## Operators                                ##
     EQ = 'EQ'
     PLUS = 'PLUS'
@@ -160,6 +164,8 @@ class Lexer(object):
             val = self.src[start : self.pos + 1]
             kw = Token.check_keyword(val)
             token = Token(Token.IDENT if kw == None else kw, val)
+        elif self.char  == '(' : token = self.mk(Token.LPAREN)
+        elif self.char  == ')' : token = self.mk(Token.RPAREN)
         elif self.char  == '\n': token = Token(Token.NEWLINE)
         elif self.char  == '\0': token = Token(Token.EOF)
         else: self.abort(f'UnknownTokenError: {self.char}')
@@ -172,6 +178,8 @@ class Parser(object):
     def __init__(self, lexer: Lexer):
         self.lexer = lexer
 
+        self.symbols = set()
+
         self.ctok = None
         self.ptok = None
         self.next()
@@ -179,6 +187,9 @@ class Parser(object):
     def check_token(self, tt): """
     Return true if the current token matches
     """; return tt == self.ctok.tt
+    def check_tokens(self, tts: list): """
+    Returns true if the current token matches any tokens in the list
+    """; return self.ctok.tt in tts
     def check_peek(self, tt): """
     Return true if the next token matches
     """; return tt == self.ptok.tt
@@ -194,10 +205,20 @@ class Parser(object):
         self.ptok = self.lexer.token
     def abort(self, message): exit_(f"ParsingError -> {message}")
     
+    def is_comparison_op(self): return self.check_tokens([
+        Token.GT, Token.GTE,
+        Token.LT, Token.LTE,
+        Token.BEQ, Token.NOTBEQ
+        ]
+    )
+
     def program(self):
         print("PROGRAM")
 
+        while self.check_token(Token.NEWLINE): self.next()
+
         while not self.check_token(Token.EOF): self.statement()
+
     def statement(self):
         if self.check_token(keywords['print']):
             print("STATEMENT-PRINT")
@@ -205,8 +226,105 @@ class Parser(object):
 
             if self.check_token(Token.STRING): self.next()
             else: self.expression()
-        
+            
+        elif self.check_token(keywords['if']):
+            print("STATEMENT-IF")
+            self.next()
+            self.comparison()
+
+            self.match(Token.LPAREN)
+            self.nl()
+            
+            while not self.check_token(Token.RPAREN): self.statement()
+            self.match(Token.RPAREN)
+
+        elif self.check_token(keywords['while']):
+            print("STATEMENT-WHILE")
+            self.next()
+            self.comparison()
+            
+            self.match(Token.LPAREN)
+            self.nl()
+
+            while not self.check_token(Token.RPAREN): self.statement()
+
+            self.match(Token.RPAREN)
+
+        elif self.check_token(keywords['let']):
+            print("STATEMENT-LET")
+            self.next()
+            if self.ctok.val not in self.symbols:
+                self.symbols.add(self.ctok.val)
+            self.match(Token.IDENT)
+            self.match(Token.EQ)
+
+            self.expression()
+
+        elif self.check_token(keywords['input']):
+            print("STATEMENT-INPUT")
+            self.next()
+            if self.ctok.val not in self.symbols:
+                self.symbols.add(self.ctok.val)
+            
+            self.match(Token.IDENT)
+
+        else: self.abort(f"InvalidStatement: {self.ctok.val} ({self.ctok.tt})")
         self.nl()
+
+    def comparison(self):
+        print("COMPARISON")
+
+        self.expression()
+
+        if self.is_comparison_op():
+            self.next()
+            self.expression()
+        else: self.abort(
+            f"Expected comparison operator at: {self.ctok.val}"
+        )
+
+        while self.is_comparison_op():
+            self.next()
+            self.expression()
+
+    def expression(self):
+        print("EXPRESSION")
+
+        self.term()
+
+        while self.check_tokens([Token.PLUS, Token.MINUS]):
+            self.next()
+            self.term()
+
+    def term(self):
+        print("TERM")
+
+        self.unary()
+
+        while self.check_tokens([Token.MUL, Token.DIV]):
+            self.next()
+            self.unary()
+
+    def unary(self):
+        print("UNARY")
+
+        if self.check_tokens([Token.PLUS, Token.MINUS]): self.next()
+
+        self.primary()
+
+    def primary(self):
+        print(f"PRIMARY ({self.ctok.val})")
+
+        if self.check_token(Token.NUMBER): self.next()
+        elif self.check_token(Token.IDENT):
+            if self.ctok.val not in self.symbols:
+                self.abort(
+                    f"Referencing variable before assignment, {self.ctok.val}"
+                )
+            self.next()
+        else: self.abort(
+            f"UnexpectedTokenError: {self.ctok.val}"
+        )
 
     def nl(self):
         print("NEWLINE")
