@@ -175,8 +175,9 @@ class Lexer(object):
 ### LEXER                                       ###
 ### PARSER                                      ###
 class Parser(object):
-    def __init__(self, lexer: Lexer):
+    def __init__(self, lexer: Lexer, emitter):
         self.lexer = lexer
+        self.emitter = emitter
 
         self.symbols = set()
 
@@ -213,7 +214,6 @@ class Parser(object):
     )
 
     def program(self):
-        print("PROGRAM")
 
         while self.check_token(Token.NEWLINE): self.next()
 
@@ -221,11 +221,17 @@ class Parser(object):
 
     def statement(self):
         if self.check_token(keywords['print']):
-            print("STATEMENT-PRINT")
             self.next()
 
-            if self.check_token(Token.STRING): self.next()
-            else: self.expression()
+            if self.check_token(Token.STRING):
+                self.emitter.emit_line(
+                    f'print("{self.ctok.val}")'
+                )
+                self.next()
+            else:
+                self.emitter.emit_line(
+                    f'print("{self.expression}")'
+                )
             
         elif self.check_token(keywords['if']):
             print("STATEMENT-IF")
@@ -331,3 +337,19 @@ class Parser(object):
         self.match(Token.NEWLINE)
         while self.check_token(Token.NEWLINE): self.next()
 ### PARSER                                      ###
+### EMITTER                                     ###
+class Emitter(object):
+    def __init__(self, path: str):
+        self.path = path
+        self.code = ""
+
+    def emit(self, code): self.code += code
+
+    def emit_line(self, code): self.emit(
+        code + '\n'
+    )
+
+    def write(self):
+        with open(self.path, 'w') as out:out.write(self.code)
+
+### EMITTER                                     ###
